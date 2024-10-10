@@ -1,17 +1,44 @@
-#' Fitting Logistic Regression Model
+#' 拟合逻辑回归以及提取模型结果
 #'
-#' This function fits a logistic regression model and extracts key results.
+#' 该函数适合逻辑回归模型并提取关键结果。
 #'
-#' @param data A data frame or tibble.
-#' @param y Outcome variable (binary, length 1).
-#' @param x Predictor variable (continuous, length 1).
-#' @param covars Covariates (character vector, optional).
-#' @param q_grp Number of groups for dividing the continuous predictor variable.
-#' @param q_val Thresholds for grouping the continuous variable (optional).
-#' @param q_ref Reference group for the predictor variable.
-#' @param digit_grp Number of digits for displaying the grouped ranges.
-#' @return A list containing model summaries and other information.
+#' @param data 数据集（必须是数据框或tibble）
+#' @param y 结局变量名称（字符，长度为1，必须是二分类）
+#' @param x 感兴趣的自变量名称（字符型，长度为1，x对应的数据必须是连续型）
+#' @param covars 协变量名称（字符型，长度大于等于0，可以为空）
+#' @param q_grp 分组数，将x对应的连续型数据划分为几组（正整数，长度为1），不能与q_val同时设置
+#' @param q_val 分组的界值，将x划分为不同的组别（数值型，长度任意），不能与q_grp同时设置
+#' @param q_ref 参考组，指定x转换为分类变量后，第几组为参考组（正整数，长度为1，默认值为1）
+#' @param digit_grp 数值保留小数位数，用于分组范围的展示（正整数，默认值为2）
+#' @return 包含模型摘要和其他信息的列表。
 #' @export
+#' @import dplyr
+#' @import tidyr
+#' @import broom
+#' @import purrr
+#' @import logger
+#' @import glue
+#' @examples
+#' # 示例数据生成
+#' set.seed(123)
+#' test_data <- data.frame(
+#'   is_bapwv = sample(c(0, 1), 100, replace = TRUE),  # 二分类变量
+#'   sbp = rnorm(100),  # 连续变量
+#'   covar1 = rnorm(100),
+#'   covar2 = sample(c("A", "B"), 100, replace = TRUE)
+#' )
+#'
+#' # 调用 logi1 函数拟合逻辑回归模型
+#' output <- logi1(
+#'   data = test_data,
+#'   y = "is_bapwv",
+#'   x = "sbp",
+#'   covars = c("covar1", "covar2"),
+#'   q_grp = 4
+#' )
+#'
+#' # 输出结果
+#' print(output)
 logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL, q_ref = 1, digit_grp = 2) {
   # 加载所需的包
   # library(dplyr)
