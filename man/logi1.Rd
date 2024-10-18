@@ -4,7 +4,18 @@
 \alias{logi1}
 \title{拟合逻辑回归以及提取模型结果}
 \usage{
-logi1(data, y, x, covars, q_grp = NULL, q_val = NULL, q_ref = 1, digit_grp = 2)
+logi1(
+  data,
+  y,
+  x,
+  covars,
+  q_grp = NULL,
+  q_val = NULL,
+  q_ref = 1,
+  digit_grp = 2,
+  digit_rr = 2,
+  log_info = TRUE
+)
 }
 \arguments{
 \item{data}{数据集（必须是数据框或tibble）}
@@ -22,12 +33,71 @@ logi1(data, y, x, covars, q_grp = NULL, q_val = NULL, q_ref = 1, digit_grp = 2)
 \item{q_ref}{参考组，指定x转换为分类变量后，第几组为参考组（正整数，长度为1，默认值为1）}
 
 \item{digit_grp}{数值保留小数位数，用于分组范围的展示（正整数，默认值为2）}
+
+\item{digit_rr}{rr值及95\%CI保留的小数位数（正整数，默认值为2）}
+
+\item{log_info}{逻辑型，是否显示日志，默认为TRUE}
 }
 \value{
-包含模型摘要和其他信息的列表。
+返回一个列表，列表中有4个元素，具体如下：
+
+\strong{元素1: raw (type = list)}
+\itemize{
+\item raw_model1: 模型1（原始连续型变量x）原始结果 (type = summary.glm)
+\item raw_model2: 模型2（变量x标化后）原始结果 (type = summary.glm)
+\item raw_model3: 模型3（变量x分类后）原始结果 (type = summary.glm)
+\item raw_model4: 模型4（变量x分类后，再转化为数值，仅用于提取趋势性检验P值）原始结果 (type = summary.glm)
+}
+
+\strong{元素2: model1_continuous (type = data.frame)}
+\itemize{
+\item 模型1提取后的结果
+}
+
+\strong{元素3: model2_per_SD (type = data.frame)}
+\itemize{
+\item 模型2提取后的结果
+}
+
+\strong{元素4: model3_classified  (type = data.frame)}
+\itemize{
+\item 模型3提取后的结果（相对于前2个模型，多了一个趋势性检验P值）
+}
+
+\strong{元素5: group (type = data.frame)}
+\itemize{
+\item 模型3中变量x的分组标准
+}
+
+model1_continuous, model2_per_SD, model3_classified中变量定义如下：
+\itemize{
+\item term: 连续型变量x的名称
+\item rr: RR值 (原始)
+\item lo: RR值的95\%CI下限 (原始)
+\item hi: RR值的95\%CI上限 (原始)
+\item rr2: RR值 (保留2位小数)
+\item lo2: RR值的95\%CI下限 (保留2位小数)
+\item hi2: RR值的95\%CI上限 (保留2位小数)
+\item ci: RR值和95\%CI的组合：rr (lo, hi)
+\item p: RR值对应的P值 (原始)
+\item p2: 如果p>0.05则显示保留2位小数的p值，如果p<0.001则显示"<0.001"，，如果p<0.05则显示"<0.05"
+\item PforTrend: 趋势性检验P值（只有model3_classified才有这个变量）
+\item PforTrend2: 计算方法同p2
+}
+
+group中的变量定义如下：
+\itemize{
+\item group_var: 变量x的名称
+\item group_name: 变量x分组后的名称
+\item group_range: 每组的取值范围
+\item group_ref: 哪一组是参考组 (Ref)
+}
 }
 \description{
-该函数适合逻辑回归模型并提取关键结果。
+该函数将拟合3种Logistics回归，并提取模型结果。
+第一种是将变量x(连续型)直接纳入模型；
+第二种是将变量x标化后(mean = 0, sd = 1)纳入模型；
+第三种是将变量x按照用户指定的分组方式(默认为分位数分组)转化为分类变量后纳入模型；
 }
 \examples{
 # 示例数据生成
