@@ -63,21 +63,17 @@
 #' print(a)
 logi1_sub <- function(data, y, x, covar = NULL, by, log_info = TRUE) {
   # 加载必要的包
-  # library(dplyr)
-  # library(broom)
-  # library(purrr)
-  # library(tibble)
-  # library(logger)
-  # library(glue)
+  library(dplyr)
+  library(broom)
+  library(purrr)
+  library(tibble)
+  library(logger)
+  library(glue)
 
   # 输入参数检查
   if (!all(data[[y]] %in% c(0, 1), na.rm = TRUE)) {
     stop(paste("结局变量", y, "必须使用01编码，其中1表示发生了感兴趣的事件。"))
   }
-  if (!is.numeric(data[[x]])) {
-    stop(paste("自变量", x, "必须是连续型变量。"))
-  }
-  # 检查分组变量的类型
   invalid_vars <- by[!sapply(data[by], function(var) is.factor(var) || is.character(var))]
   if (length(invalid_vars) > 0) {
     stop(paste("分组变量by必须是因子型或字符型，但是你提供的变量", paste(invalid_vars, collapse = ", "), "不符合要求。"))
@@ -119,25 +115,28 @@ logi1_sub <- function(data, y, x, covar = NULL, by, log_info = TRUE) {
       if (log_info) log_info("模型拟合完成并存储结果")
 
       # 提取并存储结果到tibble格式
-      model_coefs <- tidy(model) %>% filter(term == x)
-      rr <- exp(model_coefs$estimate)
-      lo <- exp(model_coefs$estimate - 1.96 * model_coefs$std.error)
-      hi <- exp(model_coefs$estimate + 1.96 * model_coefs$std.error)
-      cases <- sum(data_subset[[y]] == 1, na.rm = TRUE)
-      sample_size <- nrow(data_subset)
+      model_coefs <- tidy(model) %>% filter(grepl(x, term))
+      for (j in 1:nrow(model_coefs)) {
+        term_name <- model_coefs$term[j]
+        rr <- exp(model_coefs$estimate[j])
+        lo <- exp(model_coefs$estimate[j] - 1.96 * model_coefs$std.error[j])
+        hi <- exp(model_coefs$estimate[j] + 1.96 * model_coefs$std.error[j])
+        cases <- sum(data_subset[[y]] == 1, na.rm = TRUE)
+        sample_size <- nrow(data_subset)
 
-      extracted_results <- bind_rows(extracted_results, tibble(
-        y = y,
-        x = x,
-        subset = group_var,
-        level = level,
-        sample = sample_size,
-        cases = cases,
-        rr = rr,
-        lo = lo,
-        hi = hi
-      ))
-      if (log_info) log_info(sprintf("提取并存储结果：RR = %.6f", rr))
+        extracted_results <- bind_rows(extracted_results, tibble(
+          y = y,
+          x = term_name,
+          subset = group_var,
+          level = level,
+          sample = sample_size,
+          cases = cases,
+          rr = rr,
+          lo = lo,
+          hi = hi
+        ))
+        if (log_info) log_info(sprintf("提取并存储结果：RR = %.6f", rr))
+      }
     }
 
     # 计算交互作用的P值

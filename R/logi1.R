@@ -130,6 +130,11 @@ logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL,
   stopifnot(is.character(x) && length(x) == 1)  # 检查x是否为长度为1的字符型变量
   stopifnot(is.character(covars) && length(covars) >= 0)  # 检查covars是否为字符型且长度大于等于0
 
+  # 检查x的类型
+  if (!is.numeric(data[[x]]) && !is.factor(data[[x]]) && !is.character(data[[x]])) {
+    stop("x必须是数值型、因子型或字符型变量")
+  }
+
   # 检查q_grp和q_val的设置
   if (!is.null(q_grp) && !is.null(q_val)) {
     stop("q_grp和q_val不能同时设置")
@@ -148,8 +153,49 @@ logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL,
   form_base <- as.formula(paste(y, "~", x, ifelse(covar_formula == "", "", paste("+", covar_formula))))
   if (log_info) log_info("基础公式 (model_1): {deparse(form_base)}")
 
-  # 拟合模型1（原始模型）
-  if (log_info) log_info("拟合模型1（原始模型）...")
+  # 创建提取结果的自定义函数
+  extract_results <- function(model) {
+    if (log_info) log_info("提取模型结果...")
+    tidy(model) %>%
+      filter(term != "(Intercept)" & grepl(x, term)) %>%  # 仅提取与x相关的变量，过滤掉截距项
+      transmute(
+        y = y,
+        term,
+        rr = exp(estimate),  # 计算相对风险（RR）
+        lo = exp(estimate - 1.96 * std.error),  # 计算RR的95%置信区间下限
+        hi = exp(estimate + 1.96 * std.error),  # 计算RR的95%置信区间上限
+        rr2 = sprintf(glue('%.{digit_rr}f'), rr),  # rr保留2位小数
+        lo2 = sprintf(glue('%.{digit_rr}f'), lo),  # lo保留2位小数
+        hi2 = sprintf(glue('%.{digit_rr}f'), hi),  # hi保留2位小数
+        ci = as.character(glue("{rr2} ({lo2}, {hi2})")),  # 拼接置信区间
+        p = p.value,  # p值
+        p2 = case_when(
+          p <= 0.001 ~ "< 0.001",
+          p <= 0.05 ~ "< 0.05",
+          TRUE ~ sprintf("%.2f", p)
+        )
+      )
+  }
+
+  # 针对x为因子或字符型的情况
+  if (is.factor(data[[x]]) || is.character(data[[x]])) {
+    if (log_info) log_info("x为因子或字符型，直接拟合模型...")
+    model1 <- glm(form_base, data = data, family = binomial())
+    model1$call$formula <- form_base
+    model1_summary <- summary(model1)
+    model1_results <- extract_results(model1)
+    output <- list(
+      raw = list(raw_model1 = model1_summary),
+      model = model1_results
+    )
+    return(output)
+  }
+
+  if (is.numeric(data[[x]])) {
+    if (log_info) log_info("x是数值型，将分别拟合三种模型")
+  }
+
+
   model1 <- glm(form_base, data = data, family = binomial())
   model1$call$formula <- form_base
   model1_summary <- summary(model1)
@@ -165,6 +211,7 @@ logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL,
   model2_summary <- summary(model2)
   if (log_info) log_info("模型2拟合完成！")
 
+  # 其余部分保持不变
   # 为模型3和模型4准备分组后的x变量
   if (log_info) log_info("准备分组后的x变量...")
   if (!is.null(q_grp)) {
@@ -224,27 +271,7 @@ logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL,
 
   # 从模型中提取结果
   if (log_info) log_info("从模型中提取结果...")
-  extract_results <- function(model) {
-    if (log_info) log_info("提取模型结果...")
-    tidy(model) %>%
-      filter(term != "(Intercept)" & grepl(x, term)) %>%  # 仅提取与x相关的变量，过滤掉截距项
-      transmute(
-        term,
-        rr = exp(estimate),  # 计算相对风险（RR）
-        lo = exp(estimate - 1.96 * std.error),  # 计算RR的95%置信区间下限
-        hi = exp(estimate + 1.96 * std.error),  # 计算RR的95%置信区间上限
-        rr2 = sprintf(glue('%.{digit_rr}f'), rr),  # rr保留2位小数
-        lo2 = sprintf(glue('%.{digit_rr}f'), lo),  # lo保留2位小数
-        hi2 = sprintf(glue('%.{digit_rr}f'), hi),  # hi保留2位小数
-        ci = as.character(glue("{rr2} ({lo2}, {hi2})")),  # 拼接置信区间
-        p = p.value,  # p值
-        p2 = case_when(
-          p <= 0.001 ~ "< 0.001",
-          p <= 0.05 ~ "< 0.05",
-          TRUE ~ sprintf("%.2f", p)
-        )
-      )
-  }
+
 
   model1_results <- extract_results(model1)
   model2_results <- extract_results(model2)
@@ -286,4 +313,3 @@ logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL,
   if (log_info) log_info("函数执行完成，返回结果！")
   return(output)
 }
-
