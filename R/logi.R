@@ -99,7 +99,7 @@
 #' )
 #'
 #' # 调用 logi1 函数拟合逻辑回归模型
-#' output <- logi1(
+#' output <- logi(
 #'   data = test_data,
 #'   y = "is_bapwv",
 #'   x = "sbp",
@@ -109,7 +109,7 @@
 #'
 #' # 输出结果
 #' print(output)
-logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL,
+logi <- function(data, y, x, covars = NULL, q_grp = 4, q_val = NULL,
                   q_ref = 1, digit_grp = 2, digit_rr = 2,
                   log_info = TRUE) {
   # 加载所需的包
@@ -128,7 +128,10 @@ logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL,
   stopifnot(is.data.frame(data) || inherits(data, 'tbl_df'))  # 检查data是否为数据框或tibble
   stopifnot(is.character(y) && length(y) == 1)  # 检查y是否为长度为1的字符型变量
   stopifnot(is.character(x) && length(x) == 1)  # 检查x是否为长度为1的字符型变量
-  stopifnot(is.character(covars) && length(covars) >= 0)  # 检查covars是否为字符型且长度大于等于0
+  # 检查covars是否为空或为字符型
+  if (!is.null(covars)) {
+    stopifnot(is.character(covars) && length(covars) >= 0)  # covars为空时跳过检查
+  }
 
   # 检查x的类型
   if (!is.numeric(data[[x]]) && !is.factor(data[[x]]) && !is.character(data[[x]])) {
@@ -244,11 +247,20 @@ logi1 <- function(data, y, x, covars, q_grp = NULL, q_val = NULL,
         sprintf(paste0("%.", digit_grp, "f < x <= %.", digit_grp, "f"), breaks[i], breaks[i + 1])
       }
     }),
-    group_ref = ifelse(paste0("grp_", seq_along(original_levels)) == paste0("grp_", q_ref), "Ref", NA)
+    group_ref = ifelse(paste0("grp_", seq_along(original_levels)) == paste0("grp_", q_ref), "Ref", NA),
+    group_type = ifelse(!is.null(q_grp), 'q_grp', 'q_val')
   )
 
+  # 分组信息数据框中增加备注
+  breaks_new <- breaks[-c(1, length(breaks))]
+  names_new <- names(breaks_new)
+  info_q_grp <- paste("分组方式为：q_grp，分为", q_grp, "组。", "分组界值如下（自动计算）：",  sprintf("P%.2f%% = %.2f", as.numeric(sub("%", "", names_new)), breaks_new), collapse = ", ")# 动态拼接输出，保留名字和数值两位小数
+  info_q_val <- paste("分组方式为：q_val，分为", length(q_val)+1, "组", "分组界值如下（用户指定）：", paste0(q_val, collapse = ','))
+
+  group_info$group_note <- if (!is.null(q_grp)) info_q_grp else info_q_val
+
   # 展示分组信息数据框
-  if (log_info) log_info("分组信息数据框: {capture.output(print(group_info))}")
+  if (log_info) log_info("分组信息数据框: {capture.output(print(group_info %>% select(-last_col())))}")
 
   # 拟合模型3（分类变量）
   if (log_info) log_info("拟合模型3（分类变量）...")

@@ -55,13 +55,13 @@
 #'   type = sample(c("A", "B"), 100, replace = TRUE),
 #'   sex =  sample(c("f", "m"), 100, replace = TRUE)
 #' )
-#' a = logi1_sub(data = test_data,
+#' a = logi_sub(data = test_data,
 #' y = 'is_bapwv',
 #' x = 'sbp', covar = c('covar1', 'covar2', 'covar3'),
 #' by = c('type', 'sex'),
 #' log_info = T)
 #' print(a)
-logi1_sub <- function(data, y, x, covar = NULL, by, log_info = TRUE) {
+logi_sub <- function(data, y, x, covar = NULL, by, log_info = TRUE) {
   # 加载必要的包
   library(dplyr)
   library(broom)
