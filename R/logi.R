@@ -254,8 +254,18 @@ logi <- function(data, y, x, covars = NULL, q_grp = 4, q_val = NULL,
   # 分组信息数据框中增加备注
   breaks_new <- breaks[-c(1, length(breaks))]
   names_new <- names(breaks_new)
-  info_q_grp <- paste("分组方式为：q_grp，分为", q_grp, "组。", "分组界值如下（自动计算）：",  sprintf("P%.2f%% = %.2f", as.numeric(sub("%", "", names_new)), breaks_new), collapse = ", ")# 动态拼接输出，保留名字和数值两位小数
-  info_q_val <- paste("分组方式为：q_val，分为", length(q_val)+1, "组", "分组界值如下（用户指定）：", paste0(q_val, collapse = ','))
+
+  info_q_grp <- paste(
+    "分组方式为：q_grp，分为", q_grp, "组。",
+    "分组界值如下（自动计算）：",
+    paste(sprintf("P%.2f%% = %.2f", as.numeric(sub("%", "", names_new)), breaks_new), collapse = ", ")
+  )
+
+  info_q_val <- paste(
+    "分组方式为：q_val，分为", length(q_val) + 1, "组",
+    "分组界值如下（用户指定）：",
+    paste0(q_val, collapse = ',')
+  )
 
   group_info$group_note <- if (!is.null(q_grp)) info_q_grp else info_q_val
 
